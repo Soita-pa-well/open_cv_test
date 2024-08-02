@@ -4,6 +4,7 @@ import cv2
 from typing import Tuple
 import webcolors
 import matplotlib.colors as mcolors
+from src.models import ColorName
 
 app = FastAPI()
 
@@ -26,6 +27,7 @@ def most_common_color(image: np.ndarray) -> Tuple[int, int, int]:
 def closest_color(requested_color):
     min_colors = {}
     color_dict = mcolors.CSS4_COLORS
+    print(color_dict)
     for name, hex_value in color_dict.items():
         r_c, g_c, b_c = webcolors.hex_to_rgb(hex_value)
         rd = (r_c - requested_color[0]) ** 2
@@ -49,6 +51,5 @@ async def create_upload_file(file: UploadFile = File(...)):
     np_arr = np.frombuffer(image, dtype=np.uint8)
     image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
     closest_name = rgb_to_name(most_common_color(image))
-    hex_color = webcolors.name_to_hex(closest_name)
-
-    return {"closest_color_name": closest_name, "hex_color": hex_color}
+    correct_color = getattr(ColorName, closest_name.upper(), closest_name)
+    return {"Общий цвет фото": correct_color.value}
