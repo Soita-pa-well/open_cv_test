@@ -5,4 +5,5 @@
 ## Запуск
 
 ```pip install requariements.txt```
+
 ```uvicorn app:app```
