@@ -1,46 +1,46 @@
 from fastapi import FastAPI, File, UploadFile
 import numpy as np
 import cv2
-from typing import Tuple
 import webcolors
 import matplotlib.colors as mcolors
 from src.models import ColorName
+from sklearn.cluster import KMeans
 
 app = FastAPI()
 
 
-def most_common_color(image: np.ndarray) -> Tuple[int, int, int]:
+def most_common_color(image, num_clusters=5):
     image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     pixels = image_rgb.reshape(-1, 3)
-    color_count = {}
-    for pixel in pixels:
-        color = tuple(pixel)
-        if color in color_count:
-            color_count[color] += 1
-        else:
-            color_count[color] = 1
-    most_common_color = max(color_count, key=color_count.get)
+    kmeans = KMeans(n_clusters=num_clusters)
+    kmeans.fit(pixels)
+    cluster_centers = kmeans.cluster_centers_
+    cluster_labels = kmeans.labels_
+    cluster_counts = np.bincount(cluster_labels)
+    most_common_cluster = np.argmax(cluster_counts)
+    most_common_color = cluster_centers[most_common_cluster]
+    colors_tuple = tuple(map(int, most_common_color))
+    return colors_tuple
 
-    return most_common_color
 
-
-def closest_color(requested_color):
+def closest_color(color):
     min_colors = {}
     color_dict = mcolors.CSS4_COLORS
-    print(color_dict)
     for name, hex_value in color_dict.items():
-        r_c, g_c, b_c = webcolors.hex_to_rgb(hex_value)
-        rd = (r_c - requested_color[0]) ** 2
-        gd = (g_c - requested_color[1]) ** 2
-        bd = (b_c - requested_color[2]) ** 2
-        min_colors[(rd + gd + bd)] = name
+        red, green, blue = webcolors.hex_to_rgb(hex_value)
+        red_square = ((np.int32(red) - np.int32(color[0])) ** 2)
+        green_square = ((np.int32(green) - np.int32(color[1])) ** 2)
+        blue_square = ((np.int32(blue) - np.int32(color[2])) ** 2)
+        min_colors[(red_square + green_square + blue_square)] = name
+    closest_color = min_colors[min(min_colors.keys())]
 
-    return min_colors[min(min_colors.keys())]
+    return closest_color
 
 
 def rgb_to_name(rgb_tuple):
     try:
-        return webcolors.rgb_to_name(rgb_tuple)
+        color = webcolors.rgb_to_name(rgb_tuple)
+        return color
     except ValueError:
         return closest_color(rgb_tuple)
 
